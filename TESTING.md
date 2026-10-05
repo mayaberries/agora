@@ -37,7 +37,7 @@ This document describes how Agora is tested: what we test, at which layer, with 
 |Component|One node: storing blobs, writing/reading docs, publishing records locally|1|< 1 s each|`component`|
 |Integration|2–5 nodes in one process: transfer, gossip, sync, validation on receipt|2–5|< 10 s each|`integration`|
 |Network|Separate processes, local relay, simulated loss/offline peers|3–20|minutes|`network`|
-|Adversarial|Malicious peers and records, across all layers|varies|varies|`adversarial`|
+|Adversarial|Malicious peers and records, across all layers|varies|varies|`adversarial` plus the layer's marker|
 |Performance|Large books, many comments, many peers|varies|nightly only|`perf`|
 
 Unit and property tests run on every commit. Component and integration tests run on every PR. Network and performance tests run nightly and before releases.
@@ -54,6 +54,8 @@ Unit and property tests run on every commit. Component and integration tests run
 |`iroh-relay` (dev mode)|Local relay server so tests never touch public infrastructure|
 |`toxiproxy` or `tc netem`|Packet loss, latency and partitions in network tests|
 |`maturin develop`|Builds `agora_core` into the test virtualenv|
+|`allure-pytest`|Writes results in Allure format for the combined report (see section 9)|
+|Allure 2 CLI|Generates the report in CI (needs Java)|
 
 ### 4.1 Determinism rules
 
@@ -174,7 +176,7 @@ Test IDs are stable. Reference them in issues and PRs (e.g. "fixes MRK-04").
 
 |ID|Case|Expected|
 |---|---|---|
-|FRB-01|Register C1|Creates Work, Edition (text root), File (BLAKE3/CID) records|
+|FRB-01|Register C1|Creates Work, Edition (text root), File (BLAKE3) records|
 |FRB-02|Register C2 after C1|New File, linked to the existing Edition|
 |FRB-03|Register C5 after C1|New Edition, linked to the same Work only via explicit link or accepted suggestion|
 |FRB-04|Register C6 after C1|New Edition; not silently merged with C1|
@@ -345,6 +347,8 @@ tests/
 │   ├── SOURCES.md           # provenance and licenses of every file
 │   └── make_variants.py     # generates C2–C4, C6, C7
 ├── golden/                  # golden Merkle roots and serialization vectors
+├── allure/
+│   └── categories.json      # failure categories for the Allure report
 ├── unit/
 │   ├── test_normalize.py    # NRM
 │   ├── test_merkle.py       # MRK
@@ -385,6 +389,24 @@ markers =
     perf: performance, nightly only
 ```
 
+**Every adversarial test also carries its layer marker.** `adversarial` describes intent, not cost, so stage selection relies on the layer marker. A node-free forged-record test is `adversarial` only and runs in the fast stage. A flood test such as ADV-01 is `adversarial` plus `integration`, so it waits for the PR stage. A chaos test is `adversarial` plus `network`, so it runs nightly.
+
+**Timeouts follow the layer.** The 60-second default in `pytest.ini` covers unit to integration tests. Network and performance tests get longer ceilings in `tests/conftest.py`, and an explicit `@pytest.mark.timeout` on a test always wins:
+
+```python
+LONG_TIMEOUTS = {"perf": 3600, "network": 900}  # seconds; checked in this order
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if item.get_closest_marker("timeout"):
+            continue
+        for marker, seconds in LONG_TIMEOUTS.items():
+            if item.get_closest_marker(marker):
+                item.add_marker(pytest.mark.timeout(seconds))
+                break
+```
+
 |Stage|Trigger|Command|
 |---|---|---|
 |Fast|Every push|`pytest -m "not component and not integration and not network and not perf" -n auto`|
@@ -392,7 +414,118 @@ markers =
 |Nightly|Schedule|`pytest -m "network or adversarial or perf"`|
 |Release|Tag|Full suite, plus golden-vector check across Linux, macOS, Windows|
 
-## 9. Exit criteria
+## 9. Reporting
+
+Results from every CI stage and every OS are published as one Allure report on GitHub Pages, with history. Release health (section 10) is then checked in one place instead of across separate job logs per OS.
+
+Allure fits because `allure-pytest` writes framework-neutral result files to an `allure-results` folder, and the generator can merge any number of these folders. Each test job produces its own folder, and a single report job merges them. Test code does not change beyond one fixture.
+
+### 9.1 Mapping the plan to Allure
+
+|Plan concept|Allure field|Example|
+|---|---|---|
+|Test ID (section 6)|`id`|`MRK-05`|
+|Suite code|`suite`|`MRK`|
+|Layer marker (section 3)|`parentSuite`|`integration`|
+|Platform|parameter `os`|`Linux`|
+|CI stage and run|`executor.json`|`Nightly #212`|
+
+An autouse fixture in `tests/conftest.py`, next to the fixtures in 4.2, sets the labels from the test name and markers:
+
+```python
+import platform
+import re
+
+import allure
+
+LAYERS = ("property", "component", "integration", "network", "perf")
+
+
+@pytest.fixture(autouse=True)
+def allure_labels(request):
+    """Label every result with its test ID, suite, layer and OS."""
+    match = re.match(r"test_([a-z]{3})_(p?\d+)", request.node.name)
+    if match:
+        code = match.group(1).upper()
+        allure.dynamic.id(f"{code}-{match.group(2).upper()}")
+        allure.dynamic.suite(code)
+    layer = next((m for m in LAYERS if request.node.get_closest_marker(m)), "unit")
+    allure.dynamic.parent_suite(layer)
+    if request.node.get_closest_marker("adversarial"):
+        allure.dynamic.tag("adversarial")
+    allure.dynamic.parameter("os", platform.system())
+```
+
+The `os` parameter matters. Without it, the same test from Linux, macOS and Windows looks like three attempts at one test, and Allure shows two of them as retries.
+
+### 9.2 CI flow
+
+**In each test job** (every stage × OS combination from section 8):
+
+1. Run pytest with `--alluredir=allure-results`.
+2. Upload `allure-results` as a workflow artifact named `allure-<stage>-<os>`.
+
+**In the report job** (same workflow, `needs:` all test jobs, `if: always()` so failing runs are still reported):
+
+1. Download every result set with `actions/download-artifact@v4` and `pattern: allure-*`. The artifacts come from the same run, so the default `GITHUB_TOKEN` is enough.
+2. Download the `history/` folder from the published report on Pages into one of the result folders, so trends carry over.
+3. Write one shared `environment.properties` (Python, Rust and `agora_core` versions, normalizer version) and `executor.json` (stage, run number, link to the run), and copy `tests/allure/categories.json`. Each of these is a single file, so per-job copies would overwrite each other.
+4. Run `allure generate allure-* -o allure-report --clean`.
+5. Deploy `allure-report` to GitHub Pages with `actions/upload-pages-artifact` and `actions/deploy-pages`. The job needs `pages: write` and `id-token: write`.
+
+### 9.3 Which stages publish
+
+|Stage|Report|Why|
+|---|---|---|
+|Fast|None; results kept as artifacts|Too frequent; would bury nightly trends|
+|PR|Generated and attached to the run as an artifact, not deployed|PRs (especially from forks) must not overwrite the published report|
+|Nightly|Published|Tracks the "last 3 consecutive runs" rule in section 10|
+|Release|Published|Release checkpoint across all three platforms|
+
+A manual `workflow_dispatch` on the report job rebuilds the report from a chosen run, for example before tagging a release.
+
+### 9.4 Failure categories
+
+`tests/allure/categories.json` sorts failures so timing problems are not confused with integrity bugs:
+
+```json
+[
+  {"name": "Replication deadline missed", "matchedStatuses": ["failed", "broken"],
+   "messageRegex": ".*condition not met within.*"},
+  {"name": "Hard timeout", "matchedStatuses": ["failed", "broken"],
+   "messageRegex": ".*Timeout.*"}
+]
+```
+
+The first category matches the error raised by `eventually()` (4.2). Anything uncategorized falls into Allure's default "Product defects" (failed assertions) and "Test defects" (errors) groups.
+
+### 9.5 Risks
+
+|Risk|Impact|Mitigation|
+|---|---|---|
+|Same test on three OSes is merged into one|Platform-specific failures hidden as retries|`os` parameter (9.1); confirm on the first combined build that each OS shows separately|
+|History breaks if test names change|Trends and flaky-test tracking reset|Test IDs are stable (section 6) and names start with the ID; rename the description, never the ID|
+|Nightly and release runs share one history|Trend mixes the nightly subset with the full release suite|Publish each under its own path (`/nightly/`, `/release/`); the deploy must re-include the other path, since a Pages deploy replaces the whole site|
+|Report is public on a public repo|Test output is visible to anyone|Acceptable: the corpus is public domain / CC and test keys are throwaway. Never log real tokens or `.envrc` contents|
+|Mismatched Allure versions|Generation errors or missing data|Pin `allure-pytest` in dev dependencies and the CLI version in the workflow|
+
+Allure 3, the TypeScript rewrite, can also build filtered reports per suite or layer. Its CLI is still changing, so this plan assumes the Allure 2 CLI. Revisit once v3 settles.
+
+### 9.6 Decisions needed
+
+- [ ] **Report paths:** one report, or separate `/nightly/` and `/release/` reports (recommended).
+- [ ] **Retention:** how many runs of history to keep in the trend graphs.
+- [ ] **Allure version:** Allure 2 now, or wait for Allure 3.
+
+### 9.7 Next steps
+
+1. Add `allure-pytest` and the `allure_labels` fixture.
+2. Add `--alluredir` and the artifact upload to every test job.
+3. Create the report job and `tests/allure/categories.json`.
+4. Enable GitHub Pages with "GitHub Actions" as the source and run a first build by hand.
+5. Turn on publishing for the nightly and release stages once the first report checks out.
+
+## 10. Exit criteria
 
 A release candidate is accepted when:
 
@@ -402,7 +535,7 @@ A release candidate is accepted when:
 - Nightly network suite has passed on the last 3 consecutive runs.
 - Line coverage of the `agora` Python package ≥ 85%; validation and crypto modules ≥ 95%.
 
-## 10. Open questions
+## 11. Open questions
 
 - Exact normalization rules for front matter, footnotes and hyphenation (NRM-04/05).
 - Whether a post can reference a writing the node hasn't seen yet (THR-03).

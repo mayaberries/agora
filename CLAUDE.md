@@ -13,7 +13,7 @@ The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `d
 **Identity of content uses a three-level hierarchy (FRBR-style), not raw file hashes.** A file hash identifies bytes, not books, so discussions must not be keyed on file hashes.
 - **Work**: the abstract work (an assigned or community-agreed ID).
 - **Edition**: a specific text (ISBN, or the hash of the normalized text).
-- **File**: the exact bytes (SHA-256 / IPFS CID).
+- **File**: the exact bytes (BLAKE3 hash, as used by iroh-blobs).
 
 **Verification hashes the text, not the file.** Pipeline: extract the text from the EPUB → normalize it (whitespace, Unicode, hyphenation) → split it into paragraphs → build a Merkle tree. The root hash identifies the text. A quote is proven with one paragraph plus its Merkle path, which also avoids distributing the full copyrighted text. Fuzzy hashes (simhash/minhash) link near-identical editions.
 
