@@ -4,11 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Agora is a decentralized network for sharing books and articles and holding discussions anchored to them. Nothing has a central authority to certify what gets published. The repo is at the **design stage**: `src/`, `tests/`, `docs/` and `data/` exist but are empty. No language, toolchain, or build/test commands have been chosen yet. `README.md` is the design document and the source of truth for intent. When a stack is picked, add its build/lint/test commands (including how to run a single test) to this file.
+Agora is a decentralized network for sharing books and articles and holding discussions anchored to them. Nothing has a central authority to certify what gets published. The repo is at the **design stage**: `src/`, `tests/` and `data/` exist but are empty. The stack is chosen (Python on a Rust core, see below) but there is no code or build tooling yet. Documentation lives in `docs/`:
+- `docs/DESIGN.md`: the design document and the source of truth for intent.
+- `docs/ROADMAP.md`: the POC → MVP → v1.0 stages and their GitHub issues.
+- `docs/TESTING.md`: the testing rules. Test cases live in the GitHub testing issues (parent #1).
+
+`README.md` is the public entry point and only summarizes these. When the code lands, add its build/lint/test commands (including how to run a single test) to this file.
 
 The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `docs/` may be authored and linked from Obsidian.
 
-## Core design decisions (from README.md)
+## Core design decisions (from docs/DESIGN.md)
 
 **Identity of content uses a three-level hierarchy (FRBR-style), not raw file hashes.** A file hash identifies bytes, not books, so discussions must not be keyed on file hashes.
 - **Work**: the abstract work (an assigned or community-agreed ID).
@@ -26,7 +31,12 @@ The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `d
 - Every signature is timestamped (OpenTimestamps or an append-only transparency log). After a key compromise, signatures made before the compromise stay valid and later ones are rejected.
 - Optional: threshold signatures and social recovery.
 
-**Candidate building blocks** (not yet committed): IPFS for storage, Nostr or AT Protocol for the discussion layer, W3C Web Annotation text-quote selectors for anchoring comments to passages, and Holochain and/or Iroh for the cross-platform network layer.
+**Stack:**
+- **Network: Iroh.** iroh-blobs for file storage and transfer (BLAKE3), iroh-gossip for spreading records, iroh-docs for synced shared state.
+- **Code:** Python package `agora` (app logic, validation) on a thin Rust crate `agora_core` that exposes iroh-blobs/gossip/docs via PyO3/maturin, since the official Iroh Python bindings don't cover them.
+- **Records:** everything above the network is a signed, content-addressed record that every node validates on receipt; the network enforces no rules.
+- **Also used:** W3C Web Annotation text-quote selectors for anchoring comments to passages, OpenTimestamps for timestamping.
+- **Tests:** pytest, organized by the layers and test IDs in `docs/TESTING.md`.
 
 **Two layers:** a network layer, and a UI/UX layer that hides cryptographic complexity from non-technical users (QR codes, short links instead of raw hashes or keys).
 
@@ -41,6 +51,13 @@ The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `d
 - **Post / Comment**: a single entity type with Markdown content. Every post must anchor to a writing. Threads form a tree through parent references: each node knows only its parent (a post or a comment), and the full thread is rebuilt by following links.
 
 Development starts with public-domain / Creative Commons books.
+
+## Workflow: test-driven
+
+Development follows `docs/ROADMAP.md`. Every development issue lists the test IDs it must turn green, and links the testing issue holding their cases.
+- Write the failing tests first, named by their IDs (`test_mrk_05_...`), then implement until they pass.
+- Never assume an answer to an open question. If a case depends on an undecided rule (a "Blocking decisions" item), stop and ask, or record the decision in the testing issue first.
+- Behaviour without a test ID doesn't get built. Propose the new case for the testing issue first.
 
 # Git
 
