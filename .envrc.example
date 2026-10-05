@@ -1,0 +1,4 @@
+# Copy to .envrc, paste your fine-grained token, then run `direnv allow`.
+# See SETUP.md for the permissions the token needs.
+export GITHUB_PAT_PERSONAL=github_pat_xxx
+export GH_TOKEN=$GITHUB_PAT_PERSONAL

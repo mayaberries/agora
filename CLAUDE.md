@@ -41,3 +41,15 @@ The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `d
 - **Post / Comment**: a single entity type with Markdown content. Every post must anchor to a writing. Threads form a tree through parent references: each node knows only its parent (a post or a comment), and the full thread is rebuilt by following links.
 
 Development starts with public-domain / Creative Commons books.
+
+# Git
+
+The repo has connection to the Github MCP. The aim is to give support with PRs, Issues and so on. Never commit automatically. There's a skill for the way we should open issues in Github to avoid over-explaining and to keep a standardized format
+
+Also, you can give support to navigate the repo via gh CLI, make more higher level changes to the repo:
+
+- **MCP for reading and reviewing.** It returns structured data, so we can rely on MPC for PRs, issues and of the like.
+- **`gh` for actions tied to local checkout.**  Everything related to local can be sourced to the gh capabilities.
+- Other not mentioned cases: use the ad hoc tool.
+
+At SETUP.md you can find information on how to give support when creating a fresh clone.
