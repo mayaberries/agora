@@ -1,0 +1,43 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project status
+
+Agora is a decentralized network for sharing books and articles and holding discussions anchored to them. Nothing has a central authority to certify what gets published. The repo is at the **design stage**: `src/`, `tests/`, `docs/` and `data/` exist but are empty. No language, toolchain, or build/test commands have been chosen yet. `README.md` is the design document and the source of truth for intent. When a stack is picked, add its build/lint/test commands (including how to run a single test) to this file.
+
+The repo root also serves as an Obsidian vault (`.obsidian/`), so Markdown in `docs/` may be authored and linked from Obsidian.
+
+## Core design decisions (from README.md)
+
+**Identity of content uses a three-level hierarchy (FRBR-style), not raw file hashes.** A file hash identifies bytes, not books, so discussions must not be keyed on file hashes.
+- **Work**: the abstract work (an assigned or community-agreed ID).
+- **Edition**: a specific text (ISBN, or the hash of the normalized text).
+- **File**: the exact bytes (SHA-256 / IPFS CID).
+
+**Verification hashes the text, not the file.** Pipeline: extract the text from the EPUB → normalize it (whitespace, Unicode, hyphenation) → split it into paragraphs → build a Merkle tree. The root hash identifies the text. A quote is proven with one paragraph plus its Merkle path, which also avoids distributing the full copyrighted text. Fuzzy hashes (simhash/minhash) link near-identical editions.
+
+**EPUB is the core format.** Other formats (TXT, OEB, etc.) belong in a separate ingestion layer or module, not in the core.
+
+**Trust model: cryptography proves matches, and trust anchors authenticity.**
+- Root signers: author, publisher, estate, or library, each with a different trust level. Multiple root-signer kinds are needed for dead, anonymous, or pre-existing works.
+- Sharers' signatures are *attestations*. They are weighted by reputation or proof of owning a copy, not counted raw (to resist Sybil attacks).
+- Identity is separate from keys: DID-style identity documents list the currently valid keys. Key rotation uses KERI-style **pre-rotation** (commit to the hash of the next key).
+- Every signature is timestamped (OpenTimestamps or an append-only transparency log). After a key compromise, signatures made before the compromise stay valid and later ones are rejected.
+- Optional: threshold signatures and social recovery.
+
+**Candidate building blocks** (not yet committed): IPFS for storage, Nostr or AT Protocol for the discussion layer, W3C Web Annotation text-quote selectors for anchoring comments to passages, and Holochain and/or Iroh for the cross-platform network layer.
+
+**Two layers:** a network layer, and a UI/UX layer that hides cryptographic complexity from non-technical users (QR codes, short links instead of raw hashes or keys).
+
+## Domain model
+
+- **User**: a network participant. It owns many **publishing entities**.
+- **Author identity**: signing identity (e-signature-like) that controls rotatable keys.
+- **Publishing entity**: a library, editorial, blog, or zine. It has many writings.
+- **Writing**: a book, article, or post. It is registered with metadata (author, ISBN, publisher, year), either extracted from the EPUB or entered manually.
+- **Community**: an open, topic-based space that nobody owns.
+- **Reading group**: a claimable space that can be public or private, with moderators and open or approval-based joining.
+- **Post / Comment**: a single entity type with Markdown content. Every post must anchor to a writing. Threads form a tree through parent references: each node knows only its parent (a post or a comment), and the full thread is rebuilt by following links.
+
+Development starts with public-domain / Creative Commons books.

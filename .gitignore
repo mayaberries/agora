@@ -1,0 +1,22 @@
+# --- Obsidian ---------------------------------------------------------------
+# Shared (committed): app.json, appearance.json, core-plugins.json,
+# community-plugins.json, hotkeys.json, graph.json, plugins/, themes/, snippets/.
+# Plugin folders are committed whole (main.js, manifest.json, styles.css, data.json)
+# because Obsidian doesn't auto-install plugins listed in community-plugins.json.
+
+# Per-machine UI state: open tabs, pane sizes, recent files
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/workspaces.json
+
+# Caches some plugins write inside the vault
+.obsidian/cache/
+.obsidian/plugins/*/cache/
+.obsidian/plugins/*/.cache/
+
+# Obsidian's local trash ("Move to Obsidian trash")
+.trash/
+
+# --- OS ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
