@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Agora is a decentralized network for sharing books and articles and holding discussions anchored to them. Nothing has a central authority to certify what gets published. The repo is at the **design stage**: `src/`, `tests/` and `data/` exist but are empty. The stack is chosen (Python on a Rust core, see below) but there is no code or build tooling yet. Documentation lives in `docs/`:
 - `docs/DESIGN.md`: the design document and the source of truth for intent.
+- `docs/ARCHITECTURE.md`: layers, technical decisions, record validation and the domain model.
 - `docs/ROADMAP.md`: the POC → MVP → v1.0 stages and their GitHub issues.
 - `docs/TESTING.md`: the testing rules. Test cases live in the GitHub testing issues (parent #1).
 

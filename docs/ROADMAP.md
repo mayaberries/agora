@@ -1,12 +1,24 @@
-# Agora Roadmap
+# 🗺️ Agora Roadmap
 
-Agora is built in three stages: a **proof of concept (POC)**, a **minimum viable product (MVP)**, and a **v1.0** public release. Each stage is a GitHub milestone with a parent issue. Its sub-issues are split by area, the same way as the test suites in [TESTING.md](TESTING.md), and each one names the test IDs it must turn green.
+> Agora is built in three stages: a **proof of concept (POC)**, a **minimum viable product (MVP)**, and a **v1.0** public release. Each stage is a GitHub milestone with a parent issue. Its sub-issues are split by area, the same way as the test suites in [TESTING.md](TESTING.md), and each one names the test IDs it must turn green.
 
-The milestone pages show where development stands: [POC](https://github.com/mayaberries/agora/milestone/1), [MVP](https://github.com/mayaberries/agora/milestone/2), [v1.0](https://github.com/mayaberries/agora/milestone/3).
+```mermaid
+flowchart LR
+    POC["🧪 POC<br/>prove the core flow"] --> MVP["🚀 MVP<br/>usable public communities"] --> V1["🏁 v1.0<br/>hardened public release"]
+```
 
-## How we work: test-driven
+📍 The milestone pages show where development stands: [POC](https://github.com/mayaberries/agora/milestone/1), [MVP](https://github.com/mayaberries/agora/milestone/2), [v1.0](https://github.com/mayaberries/agora/milestone/3).
+
+🏷️ Parent issues carry the `epic` label. Every issue also carries the label of each stage it belongs to (`poc`, `mvp`, `v1.0`). Testing issues whose cases span several stages carry several stage labels.
+
+## 🔁 How we work: test-driven
 
 Every behaviour is specified as a test case before it is built, so nothing is assumed along the way.
+
+```mermaid
+flowchart LR
+    D["❓ Decisions settled"] --> R["🔴 Red<br/>write failing test"] --> G["🟢 Green<br/>make it pass"] --> F["🔵 Refactor"] --> R
+```
 
 1. **Pick a development issue.** Its "Behaviour to turn green" list is the acceptance criteria; the full cases live in the linked testing issue.
 2. **Settle blocking decisions first.** If a case depends on an open question, decide it in the testing issue and update the case. Don't pick an answer in code.
@@ -14,22 +26,22 @@ Every behaviour is specified as a test case before it is built, so nothing is as
 4. **Green:** implement the least code that makes them pass.
 5. **Refactor** with the tests green, then open a PR that references the development issue and the test IDs.
 
-Behaviour without a test ID doesn't get built. Add the case to the testing issue first, with a new ID.
+⚠️ Behaviour without a test ID doesn't get built. Add the case to the testing issue first, with a new ID.
 
-## POC: Prove the core flow end to end
+## 🧪 POC: Prove the core flow end to end
 
 Prove the core claim on one machine, with no UI: a book can be identified by its text, a quote can be proven or refuted, and two nodes can share the book and a discussion about it.
 
-Parent issue: [#21](https://github.com/mayaberries/agora/issues/21). Corpus: C1–C4, C6–C9 ([#3](https://github.com/mayaberries/agora/issues/3)).
+🏔️ Parent issue: [#21](https://github.com/mayaberries/agora/issues/21). Corpus: C1–C4, C6–C9 ([#3](https://github.com/mayaberries/agora/issues/3)).
 
-What the stage proves:
+🎬 **What the stage proves:**
 
 - Node A ingests C1, registers its Work, Edition and File, and signs the root hash.
 - Node B fetches the file from A over iroh-blobs and verifies it.
 - A quote proof from C1 verifies against the root, and C6's altered paragraph fails.
 - A post anchored to C1 gossips from A to B; an invalid record is dropped.
 
-Exit criteria:
+✅ **Exit criteria:**
 
 - Every test ID assigned to this stage is green in the fast and PR stages
 - The flow above is covered by green tests (FRB-01, KEY-02, NET-03, MRK-04/05, NET-06/07)
@@ -46,19 +58,19 @@ Exit criteria:
 |Share files and records between nodes over Iroh (NET)|[#31](https://github.com/mayaberries/agora/issues/31)|NET-01, 03, 06, 07|[#13](https://github.com/mayaberries/agora/issues/13)|
 |Run the fast and PR stages on Linux|[#32](https://github.com/mayaberries/agora/issues/32)|—|[#19](https://github.com/mayaberries/agora/issues/19)|
 
-## MVP: Ship a usable network for public communities
+## 🚀 MVP: Ship a usable network for public communities
 
 A non-technical person can install a client, register a public-domain book, discuss its passages in open communities and reading groups, and share them by QR code or short link. Author identities can rotate keys safely, and attestations are recorded.
 
-Parent issue: [#22](https://github.com/mayaberries/agora/issues/22). Corpus: adds C5 ([#3](https://github.com/mayaberries/agora/issues/3)).
+🏔️ Parent issue: [#22](https://github.com/mayaberries/agora/issues/22). Corpus: adds C5 ([#3](https://github.com/mayaberries/agora/issues/3)).
 
-What the stage proves:
+🎬 **What the stage proves:**
 
 - Register C5 after C1: a new Edition, suggested as the same Work by near-duplicate detection.
 - Rotate an author's key; earlier signatures stay valid and a thief's rotation fails.
 - Join a reading group that needs approval, post on a passage, and share the thread by QR code.
 
-Exit criteria:
+✅ **Exit criteria:**
 
 - Every test ID assigned to this stage is green, and the nightly stage passes
 - The first client is released on the platform chosen in its issue
@@ -79,13 +91,13 @@ Exit criteria:
 |Add the nightly stage, OS matrix and coverage gates|[#43](https://github.com/mayaberries/agora/issues/43)|—|[#19](https://github.com/mayaberries/agora/issues/19), [#20](https://github.com/mayaberries/agora/issues/20)|
 |Build the first client app|[#44](https://github.com/mayaberries/agora/issues/44)|—|To be created|
 
-## v1.0: Harden for a public release
+## 🏁 v1.0: Harden for a public release
 
 Complete the trust and privacy features, prove resilience against bad networks and malicious peers, meet performance targets, support other formats, and ship on desktop and mobile.
 
-Parent issue: [#23](https://github.com/mayaberries/agora/issues/23). Corpus: adds C10 ([#3](https://github.com/mayaberries/agora/issues/3)).
+🏔️ Parent issue: [#23](https://github.com/mayaberries/agora/issues/23). Corpus: adds C10 ([#3](https://github.com/mayaberries/agora/issues/3)).
 
-Exit criteria:
+✅ **Exit criteria:**
 
 - Every test ID in [TESTING.md](TESTING.md) is green
 - A release candidate meets the exit criteria in [TESTING.md](TESTING.md) §10
@@ -102,7 +114,7 @@ Exit criteria:
 |Add the release stage and cross-platform golden checks|[#52](https://github.com/mayaberries/agora/issues/52)|—|[#19](https://github.com/mayaberries/agora/issues/19)|
 |Ship the client on desktop and mobile|[#53](https://github.com/mayaberries/agora/issues/53)|—|To be created|
 
-## Open decisions by stage
+## ❓ Open decisions by stage
 
 Each of these blocks the tests that depend on it. They are tracked in the issues listed.
 

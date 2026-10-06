@@ -1,14 +1,22 @@
-# Setup
+# 🛠️ Setup
 
-How to get a fresh clone working with Claude Code and the GitHub MCP server.
+> How to get a fresh clone working with Claude Code and the GitHub MCP server.
 
 `.mcp.json` is committed and reads the token from the `GITHUB_PAT_PERSONAL` environment variable. `direnv` loads that variable from a local `.envrc` file whenever you `cd` into the repo, and `gh` picks up the same token through `GH_TOKEN`. The setup has three parts:
+
+```mermaid
+flowchart LR
+    T["🔑 Fine-grained token"] --> E[".envrc"] --> D["direnv"]
+    D -- GITHUB_PAT_PERSONAL --> M["🤖 Claude Code<br/>GitHub MCP (.mcp.json)"]
+    D -- GH_TOKEN --> G["💻 gh CLI"]
+```
+
 
 1. **Create a token** (once per token lifetime).
 2. **Install the tools** (once per machine, OS-specific).
 3. **Configure the clone** (once per clone, the same on every OS).
 
-## 1. Create a token
+## 🔑 1. Create a token
 
 On GitHub, go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
 
@@ -31,11 +39,11 @@ Leave all account permissions off.
 
 Fine-grained tokens only cover repos owned by the resource owner you select. If the repo belongs to someone else and you are a collaborator, use a classic token instead.
 
-## 2. Install the tools
+## 📦 2. Install the tools
 
 Each OS needs `direnv` and `gh`, plus a direnv hook in your shell config. Open a new terminal after adding the hook so it takes effect.
 
-### macOS
+### 🍎 macOS
 
 ```bash
 brew install direnv gh
@@ -44,7 +52,7 @@ echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
 
 zsh is the default shell on macOS. If you use bash, run `echo 'eval "$(direnv hook bash)"' >> ~/.bash_profile` instead.
 
-### Linux
+### 🐧 Linux
 
 ```bash
 # Debian / Ubuntu
@@ -63,7 +71,7 @@ echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 
 If you use zsh, run `echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc` instead. On older Debian/Ubuntu releases where `apt` has no `gh` package, add GitHub's apt repository by following the instructions at [cli.github.com](https://cli.github.com).
 
-### Windows
+### 🪟 Windows
 
 Use **Git Bash** (included with [Git for Windows](https://gitforwindows.org)). Claude Code also runs on it, and the rest of this guide works there unchanged. If you develop inside WSL, follow the Linux section instead.
 
@@ -80,7 +88,7 @@ Then in Git Bash:
 echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 ```
 
-## 3. Configure the clone
+## 📂 3. Configure the clone
 
 These steps are the same on every OS (on Windows, run them in Git Bash).
 
@@ -97,7 +105,7 @@ direnv allow
 
 `.envrc` is listed in `.gitignore`, so the token is never committed. `.envrc.example` is committed and contains only the placeholder.
 
-## Verify
+## ✅ Verify
 
 ```bash
 echo $GITHUB_PAT_PERSONAL | cut -c1-12   # token is loaded
@@ -107,12 +115,12 @@ claude                                   # start Claude Code from inside the rep
 
 Inside Claude Code, run `/mcp` and check that the `github` server is connected.
 
-## Troubleshooting
+## 🩺 Troubleshooting
 
 | Symptom                              | Cause and fix                                                                                              |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `GITHUB_PAT_PERSONAL` is empty       | The direnv hook isn't in your shell config, the terminal wasn't reopened, or `direnv allow` was skipped.     |
 | `gh` shows a different account       | `GH_TOKEN` isn't set. Check `.envrc`.                                                                       |
-| The MCP server returns 403           | The token is missing a permission. Compare it against the table in [Create a token](#1-create-a-token).    |
+| The MCP server returns 403           | The token is missing a permission. Compare it against the table in [Create a token](#-1-create-a-token).    |
 | The MCP server doesn't connect       | `claude` was started before direnv loaded the variables. Restart it from inside the repo.                 |
 | Auth fails on Windows                | `.envrc` was saved with CRLF line endings, so the token ends in `\r`. Re-save it with LF line endings.      |

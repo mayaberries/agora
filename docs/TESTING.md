@@ -1,34 +1,28 @@
-# Agora Test Plan
+# 🧪 Agora Test Plan
 
-This document holds the rules for testing Agora: what we test, at which layer, with which tools, and what "done" means for a release. The work to implement it (case lists, starting code and open decisions) is tracked in GitHub issue [#1](https://github.com/mayaberries/agora/issues/1) and its sub-issues. Development follows these tests stage by stage, test-first, as described in [ROADMAP.md](ROADMAP.md). When a rule changes, update this document in the same PR.
+> This document holds the rules for testing Agora: what we test, at which layer, with which tools, and what "done" means for a release. The work to implement it (case lists, starting code and open decisions) is tracked in GitHub issue [#1](https://github.com/mayaberries/agora/issues/1) and its sub-issues. Development follows these tests stage by stage, test-first, as described in [ROADMAP.md](ROADMAP.md). When a rule changes, update this document in the same PR.
 
 ---
 
-## 1. Goals
+## 🎯 1. Goals
 
 1. **Integrity is provable.** Every claim Agora makes ("this quote is in this edition", "this author signed this work", "this comment replies to that post") is backed by a test that tries to break it.
 2. **Tests stay readable.** Tests are written in Python with pytest. Rust is used for the core library only, not for describing behavior.
 3. **Networking is deterministic in CI.** Multi-node tests run locally, without public relays or discovery services, and do not flake on timing.
 4. **Adversarial cases are first-class.** Forged quotes, bad signatures, stolen keys and malformed records are tested as carefully as the happy path.
 
-## 2. Architecture assumptions
+## 🏗️ 2. Architecture assumptions
 
-```
-┌───────────────────────────────────────────────┐
-│ tests/ (pytest)                               │
-├───────────────────────────────────────────────┤
-│ agora (Python package): app logic, validation │
-├───────────────────────────────────────────────┤
-│ agora_core (Rust, exposed via PyO3/maturin)   │
-│   iroh · iroh-blobs · iroh-gossip · iroh-docs │
-└───────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    T["🧪 tests/ (pytest)"] --> P["🐍 agora (Python package)<br/>app logic · validation"] --> R["🦀 agora_core (Rust, via PyO3/maturin)<br/>iroh · iroh-blobs · iroh-gossip · iroh-docs"]
 ```
 
 - The official `iroh` Python bindings cover the stable core (endpoints, connections, tickets) but **not** iroh-blobs, iroh-gossip or iroh-docs. Agora therefore ships its own thin binding crate, `agora_core`, that exposes the pieces we need to Python.
 - Everything above the network is modeled as **signed, content-addressed records**. Every node validates every record it receives; there is no network-enforced rule set.
 - Pure logic (normalization, Merkle trees, record validation, comment trees) must be testable **without starting a node**.
 
-## 3. Test layers
+## 🧅 3. Test layers
 
 |Layer|What it covers|Nodes|Speed target|Marker|
 |---|---|---|---|---|
@@ -40,9 +34,16 @@ This document holds the rules for testing Agora: what we test, at which layer, w
 |Adversarial|Malicious peers and records, across all layers|varies|varies|`adversarial` plus the layer's marker|
 |Performance|Large books, many comments, many peers|varies|nightly only|`perf`|
 
+```mermaid
+flowchart LR
+    U["⚡ Unit · Property<br/>0 nodes"] --> C["🧩 Component<br/>1 node"] --> I["🔗 Integration<br/>2–5 nodes"] --> N["🌐 Network<br/>3–20 processes"]
+    A["😈 Adversarial<br/>across all layers"] -.-> U & C & I & N
+    PF["🏋️ Performance<br/>nightly"]
+```
+
 Unit and property tests run on every commit. Component and integration tests run on every PR. Network and performance tests run nightly and before releases.
 
-## 4. Tooling
+## 🧰 4. Tooling
 
 |Tool|Purpose|
 |---|---|
@@ -57,7 +58,7 @@ Unit and property tests run on every commit. Component and integration tests run
 |`allure-pytest`|Writes results in Allure format for the combined report (see section 9)|
 |Allure 2 CLI|Generates the report in CI (needs Java)|
 
-### 4.1 Determinism rules
+### 🎲 4.1 Determinism rules
 
 - **No public infrastructure.** Tests use a local relay and direct addresses or tickets. Default discovery services are disabled.
 - **Register the event loop.** Every coroutine that touches Iroh calls `uniffi_set_event_loop` (or the equivalent in `agora_core`) first. This lives in a fixture, never in individual tests.
@@ -65,7 +66,7 @@ Unit and property tests run on every commit. Component and integration tests run
 - **Fixed keys where it matters.** Identity tests use seeded keypairs so failures are reproducible. Network tests use fresh keys per test to avoid state bleed.
 - **Isolated storage.** Each node gets its own `tmp_path` directory.
 
-### 4.2 Shared fixtures
+### 🧷 4.2 Shared fixtures
 
 Shared fixtures live in `tests/conftest.py`, and tests use them instead of starting nodes themselves.
 
@@ -76,7 +77,7 @@ Shared fixtures live in `tests/conftest.py`, and tests use them instead of start
 
 The starting code is in [#2](https://github.com/mayaberries/agora/issues/2).
 
-## 5. Test corpus
+## 📚 5. Test corpus
 
 Stored in `tests/corpus/`, all public domain or Creative Commons. Every file has a provenance line in `tests/corpus/SOURCES.md`.
 
@@ -95,7 +96,7 @@ Stored in `tests/corpus/`, all public domain or Creative Commons. Every file has
 
 Derived variants (C2–C4, C6, C7) are generated by a script, `tests/corpus/make_variants.py`, so they are reproducible and documented.
 
-## 6. Test suites
+## 🗂️ 6. Test suites
 
 Each suite has a three-letter code, and each case an ID built from it: `MRK-05` for example cases, `MRK-P1` for property tests. IDs are stable: never renumber or reuse one, and reference them in issues and PRs (e.g. "fixes MRK-04").
 
@@ -127,7 +128,7 @@ Rules that apply across suites:
 - **Secondary formats:** the core handles EPUB only. Adapters for other formats live in a separate module and must produce the same normalized-text interface as EPUB ingestion.
 - **Open questions** that affect expected results are tracked in the suite's issue, and resolving one updates its rows there.
 
-## 7. Repository layout
+## 📁 7. Repository layout
 
 ```
 tests/
@@ -162,7 +163,7 @@ tests/
 
 Each test function starts its name with its ID (e.g. `test_mrk_05_forged_paragraph_fails`) so failures map back to the case and its issue.
 
-## 8. Markers and CI
+## 🏷️ 8. Markers and CI
 
 Markers are registered in `pytest.ini`, which runs with `asyncio_mode = auto` and a default `timeout = 60`.
 
@@ -187,11 +188,24 @@ Markers are registered in `pytest.ini`, which runs with `asyncio_mode = auto` an
 |Nightly|Schedule|`pytest -m "network or adversarial or perf"`|
 |Release|Tag|Full suite, plus golden-vector check across Linux, macOS, Windows|
 
+```mermaid
+flowchart LR
+    F["⚡ Fast<br/>every push"] --> PR["🔀 PR<br/>pull request"] --> NI["🌙 Nightly<br/>schedule"] --> RE["🏁 Release<br/>tag · 3 OSes"]
+```
+
 The workflows are tracked in [#19](https://github.com/mayaberries/agora/issues/19).
 
-## 9. Reporting
+## 📊 9. Reporting
 
 Results from every CI stage and every OS are published as one Allure report on GitHub Pages, with history, so release health (section 10) is checked in one place. `allure-pytest` writes each job's results, and one report job merges them. Implementation details and open decisions are in [#20](https://github.com/mayaberries/agora/issues/20).
+
+```mermaid
+flowchart LR
+    J1["🐧 Linux job"] --> A1["allure-results"]
+    J2["🍎 macOS job"] --> A2["allure-results"]
+    J3["🪟 Windows job"] --> A3["allure-results"]
+    A1 & A2 & A3 --> R["🧮 Report job<br/>merge + history"] --> P["🌍 GitHub Pages"]
+```
 
 Every result is labelled as follows, by an autouse fixture in `tests/conftest.py`:
 
@@ -220,7 +234,7 @@ Rules for keeping the report useful and safe:
 - **The report is public.** The corpus is public domain / CC and test keys are throwaway, so this is acceptable. Never log real tokens or `.envrc` contents.
 - **Versions are pinned:** `allure-pytest` in the dev dependencies and the Allure CLI in the workflow.
 
-## 10. Exit criteria
+## ✅ 10. Exit criteria
 
 A release candidate is accepted when:
 
